@@ -1,0 +1,19 @@
+{
+    // VSCODE 用户个人的个性化需求配置
+    "editor.fontSize": 18,
+    "python.envFile": "${workspaceFolder}/dev.env",
+    "python.testing.unittestEnabled": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "*_test.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "nuxt.isNuxtApp": false,
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.autopep8"
+    },
+    "python.formatting.provider": "none"
+}

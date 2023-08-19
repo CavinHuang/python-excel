@@ -1,0 +1,6 @@
+# python 相关的无需进入版本管理的文件
+.myvenv
+.DS_Store
+__pycache__
+build
+dist
