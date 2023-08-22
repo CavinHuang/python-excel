@@ -1,7 +1,6 @@
 from openpyxl import load_workbook, Workbook
 import os
 from openpyxl.utils import get_column_letter
-from openpyxl.drawing.image import Image
 from openpyxl.styles import Alignment, Font
 from copy import copy
 import traceback
@@ -94,7 +93,7 @@ def process_excel(file_path):
             new_sheet.row_dimensions[row_idx].height = 20
             for col_idx, cell in enumerate(row, start=1):
                 current_cell = sheet.cell(row=row_idx, column=col_idx)
-                font = Font(name=current_cell.font.name, size=current_cell.font.size)
+                font = Font(name=current_cell.font.name, size=current_cell.font.size, vertAlign=current_cell.font.vertAlign, bold=current_cell.font.bold, italic=current_cell.font.italic, underline=current_cell.font.underline, strike=current_cell.font.strike, outline=current_cell.font.outline, shadow=current_cell.font.shadow, condense=current_cell.font.condense, extend=current_cell.font.extend, u=current_cell.font.u, charset=current_cell.font.charset, family=current_cell.font.family, scheme=current_cell.font.scheme)
                 # 复制列宽
                 if row_idx == 1:
                     col_letter = get_column_letter(col_idx)
@@ -135,24 +134,34 @@ def process_excel(file_path):
                               # 当前行的总重量
                               totalWeight = round(quantity * num, 2)
                               logger.info(f'当前行:{r_idx},数量：{num},当前项的平均值：{quantity}, 当前行总重量：{totalWeight}')
-                              new_sheet.cell(row=r_idx, column=col_idx, value=totalWeight)
-                              new_sheet.cell(row=row_idx, column=col_idx).alignment = alignment
-                              new_sheet.cell(row=row_idx, column=col_idx).font = font
+                              _cell = new_sheet.cell(row=r_idx, column=col_idx, value=totalWeight)
+                              _cell.alignment = alignment
+                              _cell.font = font
+                    # 箱子
+                    elif col_idx == 11:
+                      if row_idx >= merged_range.max_row:
+                        for r_idx in range(merged_range.min_row, merged_range.max_row + 1):
+                          _cell = new_sheet.cell(row=r_idx, column=col_idx, value=0)
+                          _cell.alignment = alignment
+                          _cell.font = font
+
+                        merged_value = sheet.cell(row=merged_range.min_row, column=merged_range.min_col).value or 0
+                        new_sheet.cell(row=merged_range.min_row, column=merged_range.min_col, value=merged_value)
 
                     else:
                         # new_row.append(cell)
                         merged_value = sheet.cell(row=merged_range.min_row, column=merged_range.min_col).value or 0
-                        new_sheet.cell(row=row_idx, column=col_idx, value=merged_value)
-                        new_sheet.cell(row=row_idx, column=col_idx).alignment = alignment
-                        new_sheet.cell(row=row_idx, column=col_idx).font = font
+                        _cell = new_sheet.cell(row=row_idx, column=col_idx, value=merged_value)
+                        _cell.alignment = alignment
+                        _cell.font = font
                     
                     in_merged_range = False  # 重置标记
                 else:
                     # 如果不在合并单元格范围内，直接使用当前单元格的值
                     # new_row.append(cell)
-                    new_sheet.cell(row=row_idx, column=col_idx, value=cell)
-                    new_sheet.cell(row=row_idx, column=col_idx).alignment = alignment
-                    new_sheet.cell(row=row_idx, column=col_idx).font = font
+                    _cell = new_sheet.cell(row=row_idx, column=col_idx, value=cell)
+                    _cell.alignment = alignment
+                    _cell.font = font
                     in_merged_range = False  # 重置标记
 
         # 复制图片
