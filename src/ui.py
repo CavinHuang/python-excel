@@ -1,37 +1,27 @@
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import font
+from tkinter import filedialog, scrolledtext, messagebox, font
 import data_processor
-import locale
 import os
-import sys
-from tkinter import messagebox
+import logging
+import threading
 
 # 定义一个用于重定向标准输出的辅助类
-class TextRedirector:
+class TextHandler(logging.Handler):
     def __init__(self, text_widget):
+        super().__init__()
         self.text_widget = text_widget
-        self.buffer = ''
 
-    def write(self, message):
-        self.buffer += message
-        lines = self.buffer.split('\n')
-        for line in lines[:-1]:
-            self.text_widget.insert(tk.END, line + '\n')
-            self.text_widget.see(tk.END)  # 自动滚动到最底部
-        self.buffer = lines[-1]
-
-    def flush(self):
-        pass
-
-# 设置locale为中文（简体）
-locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8')
+    def emit(self, record):
+        msg = self.format(record)
+        self.text_widget.insert(tk.END, msg + '\n')
+        self.text_widget.see(tk.END)  # 滚动到文本末尾
 
 # 创建窗口
 window = tk.Tk()
 window.title("Excel自动化工具")
+
 # 设置字体
-chinese_font = font.Font(family='微软雅黑', size=12)  # 选择合适的字体
+chinese_font = font.Font(family='微软雅黑', size=12)
 window.option_add("*Font", chinese_font)
 
 # 设置窗口大小和位置
@@ -51,8 +41,8 @@ result_label.pack()
 selected_file_path = ""
 
 # 新增：创建文本控件用于显示日志
-log_text = tk.Text(window, height=10, width=60)
-log_text.pack(pady=10)
+log_text = scrolledtext.ScrolledText(window, wrap=tk.WORD, width=80, height=10)
+log_text.pack(padx=20)
 
 # 创建选择文件函数
 def open_file_dialog():
@@ -62,11 +52,9 @@ def open_file_dialog():
         file_name = os.path.basename(file_path)  # 获取文件名
         result_label.config(text="当前选择的文件：" + file_name)
         selected_file_path = file_path
-        return file_path
     else:
         result_label.config(text="")
         selected_file_path = ''
-        return None
 
 # 创建开始数据操作函数
 def start_data_processing():
@@ -74,19 +62,28 @@ def start_data_processing():
     if not selected_file_path:
         messagebox.showinfo("提示", "请先选择一个文件")
         return
-    
+
     # 清空日志文本控件
     log_text.delete('1.0', tk.END)
 
-    # 重定向标准输出流到日志文本控件
-    old_stdout = sys.stdout
-    sys.stdout = TextRedirector(log_text)
-    
-    data_processor.process_excel(selected_file_path)
-    result_label.config(text="数据操作完成")
+    # 将日志处理器添加到根日志
+    text_handler = TextHandler(log_text)
+    root_logger = logging.getLogger('log')
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(text_handler)
 
-    # 恢复标准输出流
-    sys.stdout = old_stdout
+    # 调用数据处理函数
+    # data_processor.process_excel(selected_file_path)
+    # 启动数据处理的工作线程
+    def process_data():
+        data_processor.process_excel(selected_file_path)
+        result_label.config(text="数据操作完成")
+
+    processing_thread = threading.Thread(target=process_data)
+    processing_thread.start()
+
+    # 移除日志处理器
+    # root_logger.removeHandler(text_handler)
 
 # 创建按钮
 open_button = tk.Button(window, text="选择Excel文件", command=open_file_dialog)

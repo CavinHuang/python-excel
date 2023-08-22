@@ -1,11 +1,10 @@
 from copy import copy
 from openpyxl.utils import get_column_letter
-
 from openpyxl.styles import Alignment, Font
 
 alignment = Alignment(wrapText=True, shrinkToFit=False, wrap_text=True, vertical='center', horizontal='center')
 
-def copy_sheet(src_ws, targ_ws):
+def xlsx_sheet_copy(src_ws, targ_ws):
     max_row = src_ws.max_row  # 最大行数
     max_column = src_ws.max_column  # 最大列数
     w, h = 0, 0
@@ -25,6 +24,12 @@ def copy_sheet(src_ws, targ_ws):
                 targ_ws[i].alignment = alignment #copy(src_ws[i].alignment)
             except Exception as e :
                 print(e)
+
+    wm = list(src_ws.merged_cells)  # 开始处理合并单元格
+    for i in range(0, len(wm)):
+        cell2 = str(wm[i]).replace('(<MergedCellRange ', '').replace('>,)', '')
+        targ_ws.merge_cells(cell2)
+
     #此处有坑当你获得一个列宽为13的时候实际上是这个列和前面单元格一样的宽度，并不是他真的是13
     for i in range(1, max_column + 1):
         column_letter = get_column_letter(i)
@@ -36,11 +41,9 @@ def copy_sheet(src_ws, targ_ws):
         targ_ws.column_dimensions[column_letter].width = rs
     #复制行高，没有列宽的坑
     for i in range(1, max_row + 1):
-        rs = src_ws.row_dimensions[i].height
-        if rs != None:
-            targ_ws.row_dimensions[i].height = rs
-
-    wm = list(src_ws.merged_cells)  # 开始处理合并单元格
-    for i in range(0, len(wm)):
-        cell2 = str(wm[i]).replace('(<MergedCellRange ', '').replace('>,)', '')
-        targ_ws.merge_cells(cell2)
+        targ_ws.row_dimensions[i].height = 20
+    
+    # 复制图片
+    # print('复制图片', src_ws._images)
+    for image in src_ws._images:
+        targ_ws.add_image(image)

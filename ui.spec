@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['src/ui.py'],
+    ['src\\ui.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -41,10 +41,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-)
-app = BUNDLE(
-    exe,
-    name='ui.app',
-    icon=None,
-    bundle_identifier=None,
 )

@@ -2,53 +2,99 @@ from openpyxl import load_workbook, Workbook
 import os
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image
-from copy_worksheet import xlsx_sheet_copy
 from openpyxl.styles import Alignment, Font
 from copy import copy
-
+import traceback
+import logging
 
 # 设置单元格的对齐方式，使内容溢出时隐藏
 alignment = Alignment(wrapText=True, shrinkToFit=False, wrap_text=True, vertical='center', horizontal='center')
 
-def copy_images(src_sheet, dest_sheet):
-    print(src_sheet)
-    for img in src_sheet._images:
-        image = Image(img.image)
-        print('tupina', img.anchor)
-        dest_sheet.add_image(image, img.anchor)
+def xlsx_sheet_copy(src_ws, targ_ws, logger):
+    max_row = src_ws.max_row  # 最大行数
+    max_column = src_ws.max_column  # 最大列数
+    w, h = 0, 0
+    #复制每个单元格
+    logger.info('复制数据样式start')
+    for column in range(1, max_column + 1):
+        for row in range(1, max_row + 1):
+            column_n = get_column_letter(column)
+            i = '%s%d' % (column_n, row)  # 单元格编号
+            try:
+                #复制
+                targ_ws[i].value = copy(src_ws[i].value)
+                targ_ws[i].font = Font(src_ws[i].font.name, src_ws[i].font.size) #copy(src_ws[i].font)
+                targ_ws[i].border = copy(src_ws[i].border)
+                targ_ws[i].fill = copy(src_ws[i].fill)
+                targ_ws[i].number_format = copy(src_ws[i].number_format)
+                targ_ws[i].protection = copy(src_ws[i].protection)
+                targ_ws[i].alignment = alignment #copy(src_ws[i].alignment)
+            except Exception as e :
+                print(e)
+
+    logger.info('复制数据样式end')
+
+    logger.info('处理合并单元格start')
+    wm = list(src_ws.merged_cells)  # 开始处理合并单元格
+    for i in range(0, len(wm)):
+        cell2 = str(wm[i]).replace('(<MergedCellRange ', '').replace('>,)', '')
+        targ_ws.merge_cells(cell2)
+
+    logger.info('处理合并单元格end')
+
+    logger.info('处理合并单元格行高列宽start')
+    #此处有坑当你获得一个列宽为13的时候实际上是这个列和前面单元格一样的宽度，并不是他真的是13
+    for i in range(1, max_column + 1):
+        column_letter = get_column_letter(i)
+        rs = src_ws.column_dimensions[column_letter].width
+        if (rs == 13):
+            rs = w
+        else:
+            w = rs
+        targ_ws.column_dimensions[column_letter].width = rs
+    #复制行高，没有列宽的坑
+    for i in range(1, max_row + 1):
+        targ_ws.row_dimensions[i].height = 20
+    logger.info('处理合并单元格行高列宽end')
+    logger.info('复制图片start')
+    # 复制图片
+    for img in src_ws._images:
+      targ_ws.add_image(img)
+    logger.info('复制图片start')
 
 def process_excel(file_path):
     try:
+        logger = logging.getLogger('log')
+        logger.setLevel(logging.DEBUG)
+        logger.info("开始处理Excel文件：%s", file_path)
+
         workbook = load_workbook(file_path)
         sheet = workbook.active
-        new_workbook = Workbook()
-        copy_sheet = new_workbook.active
-        # new_workbook.active = sheet.copy()
-        copy_sheet.title = sheet.title
 
-        # old_sheet = new_workbook.create_sheet(title=sheet.title)
+        new_workbook = Workbook()
+
         new_sheet = new_workbook.create_sheet(title="sheet 1")
 
         # 复制旧表格内容到第一个sheet
-        # for row in sheet.iter_rows(values_only=True):
-        #     old_sheet.append(row)
         # xlsx_sheet_copy(sheet, copy_sheet)
 
         # 获取合并单元格的范围
         merged_ranges = sheet.merged_cells.ranges
 
+        logger.info('==================复制表格数据 Start==================')
+
         # 遍历每一行数据
         for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1):
-            # print('🚀 ~ file: data_processor.py:22 ~ row_idx:', row_idx, row)
-            new_row = []
             in_merged_range = False  # 标记当前单元格是否在合并单元格范围内
             merged_range = None  # 初始化合并单元格范围
+
+            logger.info(f'开始处理第{row_idx}行数据：{row}')
 
             # 设置行高为20
             new_sheet.row_dimensions[row_idx].height = 20
             for col_idx, cell in enumerate(row, start=1):
-                # current_cell = sheet.cell(row=row_idx, column=col_idx)
-                font = Font(name=cell.font.name, size=cell.font.size)
+                current_cell = sheet.cell(row=row_idx, column=col_idx)
+                font = Font(name=current_cell.font.name, size=current_cell.font.size)
                 # 复制列宽
                 if row_idx == 1:
                     col_letter = get_column_letter(col_idx)
@@ -65,7 +111,8 @@ def process_excel(file_path):
                         in_merged_range = True
                         break
                 if in_merged_range:
-                    print(f'第{row_idx}行数据需要拆分.')
+                    logger.info(f'第{row_idx}行数据需要拆分.')
+                    # print(f'第{row_idx}行数据需要拆分.')
                     # 如果在合并单元格范围内，获取合并单元格的左上角单元格的值
                     if col_idx == 13 :
                       if row_idx >= merged_range.max_row:
@@ -79,14 +126,15 @@ def process_excel(file_path):
 
                           # 计算平均值
                           quantity = float(merged_value) / totalNum
-                          print(f'开始拆分[重量]，共合并{merged_range.max_row - merged_range.min_row}行，总数量：{totalNum},总重量：{merged_value},平均值：{quantity}')
+                          logger.info(f'开始拆分[重量]，共合并{merged_range.max_row - merged_range.min_row}行，总数量：{totalNum},总重量：{merged_value},平均值：{quantity}')
+                          
 
                           for r_idx in range(merged_range.min_row, merged_range.max_row + 1):
                               # 当前行的数量
                               num = sheet.cell(row=r_idx, column=col_idx - 1).value or 0
                               # 当前行的总重量
                               totalWeight = round(quantity * num, 2)
-                              print(f'当前行:{r_idx},数量：{num},当前项的平均值：{quantity}, 当前行总重量：{totalWeight}')
+                              logger.info(f'当前行:{r_idx},数量：{num},当前项的平均值：{quantity}, 当前行总重量：{totalWeight}')
                               new_sheet.cell(row=r_idx, column=col_idx, value=totalWeight)
                               new_sheet.cell(row=row_idx, column=col_idx).alignment = alignment
                               new_sheet.cell(row=row_idx, column=col_idx).font = font
@@ -106,28 +154,59 @@ def process_excel(file_path):
                     new_sheet.cell(row=row_idx, column=col_idx).alignment = alignment
                     new_sheet.cell(row=row_idx, column=col_idx).font = font
                     in_merged_range = False  # 重置标记
-            # print(row_idx,new_row)
-            # new_sheet.append(new_row)
 
         # 复制图片
-        print('复制图片', sheet._images)
-        # copy_images(sheet, new_sheet)
+        logger.info('==================复制表格数据 End==================')
+        logger.info('==================复制表格图片 Start==================')
         for image in sheet._images:
           new_sheet.add_image(image)
-          print(image.anchor._from.row )	#可以获取图片的行
-          print(image.anchor._from.col )	#图片的列
+
+        logger.info('==================复制表格图片 End==================')
 
         file_name, file_extension = os.path.splitext(os.path.basename(file_path))
         new_file_name = f"{file_name}_拆分表{file_extension}"
         new_file_path = os.path.dirname(file_path) +'/'+ new_file_name
-
-        print(f'原文件地址: {file_path}')
-        print(f'新文件地址: {new_file_path}')
         
         new_workbook.save(new_file_path)
 
         # 关闭工作簿
         workbook.close()
         new_workbook.close()
+
+        logger.info('==================复制汇总表 Start==================')
+        copy_total_sheet(file_path, new_file_path, logger)
     except Exception as e:
-        print("处理出错：", e)
+        print("处理出错：")
+        print(traceback.format_exc())
+
+def copy_total_sheet(file_path, src_path, logger):
+    try:
+      workbook = load_workbook(file_path)
+      src_book = load_workbook(src_path)
+
+      sheet = workbook.active
+      src_sheet = src_book.active
+
+      # 复制旧表格内容到第一个sheet
+      xlsx_sheet_copy(sheet, src_sheet, logger)
+
+      logger.info('===============复制汇总表 End================')
+
+      file_name, file_extension = os.path.splitext(os.path.basename(file_path))
+      new_file_name = f"{file_name}_拆分表{file_extension}"
+      desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+      new_file_path = desktop_path +'/'+ new_file_name
+
+
+      logger.info(f'原文件地址: {file_path}')
+      logger.info(f'新文件地址: {new_file_path}')
+
+      src_book.save(new_file_path)
+
+      # 关闭工作簿
+      workbook.close()
+      src_book.close()
+
+    except Exception as e:
+      print("处理出错：")
+      print(traceback.format_exc())
