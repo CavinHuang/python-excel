@@ -1,0 +1,1 @@
+pyinstaller --onefile --noconsole ./src/ui.py --name "Excel自动化处理程序"
