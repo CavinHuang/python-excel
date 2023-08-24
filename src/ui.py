@@ -47,6 +47,9 @@ log_text.pack(padx=20)
 # 创建选择文件函数
 def open_file_dialog():
     global selected_file_path
+    selected_file_path = ''
+    # 清空之前的记录
+    log_text.delete('1.0', tk.END)
     file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
     if file_path:
         file_name = os.path.basename(file_path)  # 获取文件名
@@ -78,6 +81,7 @@ def start_data_processing():
     def process_data():
         data_processor.process_excel(selected_file_path)
         result_label.config(text="数据操作完成")
+        # selected_file_path = ""
 
     processing_thread = threading.Thread(target=process_data)
     processing_thread.start()
