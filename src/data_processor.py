@@ -2,9 +2,14 @@ from openpyxl import load_workbook, Workbook
 import os
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
+from openpyxl.drawing.image import Image
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, TwoCellAnchor
+
 from copy import copy
 import traceback
 import logging
+from fetch_main_Image import fetch_img
+
 
 # 设置单元格的对齐方式，使内容溢出时隐藏
 alignment = Alignment(wrapText=True, shrinkToFit=False, wrap_text=True, vertical='center', horizontal='center')
@@ -61,6 +66,14 @@ def xlsx_sheet_copy(src_ws, targ_ws, logger):
       targ_ws.add_image(img)
     logger.info('复制图片start')
 
+def xlsx_sheet_add_img(src_img, m, n, ws, logger):
+    img = Image(src_img)
+    _from = AnchorMarker(n-1, 50000, m-1, 50000)
+    to = AnchorMarker(n, -50000, m, -50000)
+    img.anchor = TwoCellAnchor('twoCell', _from, to)
+    ws.add_image(img)
+    logger.info('图片插入成功')
+
 def process_excel(file_path):
     try:
         logger = logging.getLogger('log')
@@ -80,7 +93,17 @@ def process_excel(file_path):
         # 获取合并单元格的范围
         merged_ranges = sheet.merged_cells.ranges
 
-        logger.info('==================复制表格数据 Start==================')
+        sheet_images = sheet._images
+
+        def has_image(rowIndex):
+          for image in sheet_images:
+            image_anchor = image.anchor
+            if image.anchor._from.row == rowIndex:
+               return True
+          return False
+
+
+        logger.info('==============复制表格数据 Start==============')
 
         # 遍历每一行数据
         for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1):
@@ -88,6 +111,17 @@ def process_excel(file_path):
             merged_range = None  # 初始化合并单元格范围
 
             logger.info(f'开始处理第{row_idx}行数据：{row}')
+
+            # print(row_idx)
+            image_in_cell = has_image(row_idx)
+            if image_in_cell is not True:
+                cell = sheet.cell(row_idx, 17)
+                product_url = cell.value
+                logger.info(f'商品链接:{product_url}')
+                if product_url is not None and product_url.lower().startswith('http'):
+                    logger.info(f'=======没有图片: {row_idx}')
+                    file_full_name = fetch_img(url=product_url, row_index=row_idx, logger=logger)
+                    xlsx_sheet_add_img(file_full_name, cell.row, cell.column, new_sheet, logger)
 
             # 设置行高为20
             new_sheet.row_dimensions[row_idx].height = 20

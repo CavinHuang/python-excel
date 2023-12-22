@@ -16,6 +16,7 @@ class TextHandler(logging.Handler):
         self.text_widget.insert(tk.END, msg + '\n')
         self.text_widget.see(tk.END)  # 滚动到文本末尾
 
+
 # 创建窗口
 window = tk.Tk()
 window.title("Excel自动化工具")
