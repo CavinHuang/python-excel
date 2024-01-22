@@ -34,58 +34,68 @@ async def main(url, file_full_name, logger):
             "handleSIGTERM": False,
             "handleSIGHUP": False
     })
-    pages = await browser.pages()
-    page = pages[0]
+    # pages = await browser.pages()
+    # page = pages[0]
+    page = await browser.newPage()
     page.setUserAgent(ua.random)
-    await page.goto(url, { 'timeout': 0 })
- 
-    while True:
+
+    try:
+        navigation_promise = page.goto(url, { 'timeout': 0 })
+    
+        await navigation_promise
+
+        while True:
+            await asyncio.sleep(2)
+            htm = await page.content()
+            html = etree.HTML(htm)
+            image = html.xpath('//div[@class="a-row a-text-center"]/img/@src')
+            if image:
+                logger.info('出现验证码')
+                # 获取图片二进制数据
+                headers = {'Users-Agent': ua.random}
+                img_data = requests.get(url=image[0], headers=headers).content
+                code_path = os.path.join(local_image_tmp, 'code.png')
+                with open(code_path, 'wb') as fp:
+                    fp.write(img_data)
+    
+                # 在输入框输入验证码
+                # await asyncio.sleep(2)
+                result = find_image(code_path)
+                await page.hover('input#captchacharacters')
+                await page.type('input#captchacharacters', result)
+                # 点击确定按钮
+                # await asyncio.sleep(2)
+                await page.hover('button[type="submit"]')
+                await page.click('button[type="submit"]')
+    
+            else:
+                logger.info('没有出现验证码, 进入页面成功')
+                break
+    
         await asyncio.sleep(2)
+        # 获取网页信息
+        xpath = '//*[@id="landingImage"]'
+        await page.waitForXPath(xpath)
         htm = await page.content()
         html = etree.HTML(htm)
-        image = html.xpath('//div[@class="a-row a-text-center"]/img/@src')
+        image = html.xpath('//*[@id="landingImage"]/@src')
+        
         if image:
-            logger.info('出现验证码')
+            logger.info('获取图片')
             # 获取图片二进制数据
             headers = {'Users-Agent': ua.random}
             img_data = requests.get(url=image[0], headers=headers).content
-            code_path = os.path.join(local_image_tmp, 'code.png')
-            with open(code_path, 'wb') as fp:
+            with open(file_full_name, 'wb') as fp:
                 fp.write(img_data)
- 
-            # 在输入框输入验证码
-            # await asyncio.sleep(2)
-            result = find_image(code_path)
-            await page.hover('input#captchacharacters')
-            await page.type('input#captchacharacters', result)
-            # 点击确定按钮
-            # await asyncio.sleep(2)
-            await page.hover('button[type="submit"]')
-            await page.click('button[type="submit"]')
- 
         else:
-            logger.info('没有出现验证码, 进入页面成功')
-            break
- 
-    await asyncio.sleep(2)
+            print('页面图片查找失败')
+            with open('./example.html', 'wb') as fp:
+                fp.write(etree.tostring(html, encoding='utf-8', pretty_print=True))
+    except Exception as e:
+        print(e)
 
-    # 获取网页信息
-    htm = await page.content()
-    html = etree.HTML(htm)
-    image = html.xpath('//*[@id="landingImage"]/@src')
-    
-    if image:
-        logger.info('获取图片')
-        # 获取图片二进制数据
-        headers = {'Users-Agent': ua.random}
-        img_data = requests.get(url=image[0], headers=headers).content
-        with open(file_full_name, 'wb') as fp:
-            fp.write(img_data)
-    else:
-        print('页面图片查找失败')
-        with open('./example.html', 'wb') as fp:
-            fp.write(etree.tostring(html, encoding='utf-8', pretty_print=True))
-    await browser.close()
+    finally:
+        await browser.close()
  
 # 设置一个商品asin
 #ASIN = 'https://www.amazon.co.uk/dp/B0BYRKFH4J?th=1'

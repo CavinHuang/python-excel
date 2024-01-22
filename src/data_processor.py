@@ -67,12 +67,14 @@ def xlsx_sheet_copy(src_ws, targ_ws, logger):
     logger.info('复制图片start')
 
 def xlsx_sheet_add_img(src_img, m, n, ws, logger):
-    img = Image(src_img)
-    _from = AnchorMarker(n-1, 50000, m-1, 50000)
-    to = AnchorMarker(n, -50000, m, -50000)
-    img.anchor = TwoCellAnchor('twoCell', _from, to)
-    ws.add_image(img)
-    logger.info('图片插入成功')
+    if os.path.exists(src_img):
+        img = Image(src_img)
+        _from = AnchorMarker(n-1, 50000, m-1, 50000)
+        to = AnchorMarker(n, -50000, m, -50000)
+        img.anchor = TwoCellAnchor('twoCell', _from, to)
+        ws.add_image(img)
+        logger.info('图片插入成功')
+    
 
 def process_excel(file_path):
     try:
