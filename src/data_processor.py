@@ -5,6 +5,8 @@ from openpyxl.styles import Alignment, Font
 from copy import copy
 import traceback
 import logging
+from io import BytesIO
+from PIL import Image
 
 # 设置单元格的对齐方式，使内容溢出时隐藏
 alignment = Alignment(wrapText=True, shrinkToFit=False, wrap_text=True, vertical='center', horizontal='center')
@@ -57,8 +59,8 @@ def xlsx_sheet_copy(src_ws, targ_ws, logger):
     logger.info('处理合并单元格行高列宽end')
     logger.info('复制图片start')
     # 复制图片
-    for img in src_ws._images:
-      targ_ws.add_image(img)
+    #for img in src_ws._images:
+    #  targ_ws.add_image(img)
     logger.info('复制图片start')
 
 def process_excel(file_path):
@@ -167,8 +169,8 @@ def process_excel(file_path):
         # 复制图片
         logger.info('==================复制表格数据 End==================')
         logger.info('==================复制表格图片 Start==================')
-        for image in sheet._images:
-          new_sheet.add_image(image)
+        #for image in sheet._images:
+        #  new_sheet.add_image(image)
 
         logger.info('==================复制表格图片 End==================')
 

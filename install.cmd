@@ -1,1 +1,1 @@
-pyinstaller --onefile --noconsole ./src/ui.py --name "Excel自动化处理程序"
+pyinstaller --onefile --noconsole ./src/ui.py --name "Excel_auto_soft_no_image"
