@@ -113,7 +113,7 @@ def process_excel(file_path):
                     logger.info(f'第{row_idx}行数据需要拆分.')
                     # print(f'第{row_idx}行数据需要拆分.')
                     # 如果在合并单元格范围内，获取合并单元格的左上角单元格的值
-                    if col_idx == 13 :
+                    if col_idx == 15 :
                       if row_idx >= merged_range.max_row:
                           # 统计所有的数量
                           totalNum = 0
@@ -138,7 +138,7 @@ def process_excel(file_path):
                               _cell.alignment = alignment
                               _cell.font = font
                     # 箱子
-                    elif col_idx == 11:
+                    elif col_idx == 13:
                       if row_idx >= merged_range.max_row:
                         for r_idx in range(merged_range.min_row, merged_range.max_row + 1):
                           _cell = new_sheet.cell(row=r_idx, column=col_idx, value=0)

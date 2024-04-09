@@ -3,7 +3,7 @@ import data_processor
 
 def main():
     script_directory = os.path.dirname(__file__)
-    file_path = os.path.realpath(script_directory + '/test_all.xlsx')
+    file_path = os.path.realpath(script_directory + '/258件清单.xlsx')
     data_processor.process_excel(os.path.normpath(file_path))
     print('success')
 # 运行代码的入口
